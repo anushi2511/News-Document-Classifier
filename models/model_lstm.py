@@ -60,7 +60,7 @@ from sklearn.metrics import (
 # CONFIG
 # ──────────────────────────────────────────────────────────────
 
-DATA_DIR  = "."
+DATA_DIR  = "data"
 SAVE_DIR  = "."
 CLASSES   = ["business", "education", "entertainment", "sports", "technology"]
 CLASS2IDX = {c: i for i, c in enumerate(CLASSES)}
@@ -466,3 +466,86 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# ===============================
+# 🔹 GLOBALS
+# ===============================
+_model = None
+_vocab = None
+
+
+def train(X_train=None, y_train=None):
+    """
+    Train model for external use
+    """
+    global _model, _vocab
+
+    df = load_data()
+    df = build_feature_column(df)
+    X_train, X_val, X_test, y_train, y_val, y_test = split_data(df)
+
+    _vocab = build_vocab(X_train)
+
+    X_train_ids = tokenise(X_train, _vocab)
+    X_val_ids   = tokenise(X_val, _vocab)
+
+    model = LSTMClassifier(
+        vocab_size=len(_vocab),
+        embed_dim=EMBED_DIM,
+        hidden_dim=HIDDEN_DIM,
+        num_classes=len(CLASSES),
+        pad_idx=_vocab["<PAD>"],
+    ).to(DEVICE)
+
+    fit(
+        model,
+        X_train_ids, y_train,
+        X_val_ids=X_val_ids, y_val=y_val,
+    )
+
+    _model = model
+    return _model
+
+
+def predict(text):
+    """
+    Predict single text (for Streamlit)
+    """
+    global _model, _vocab
+
+    if _model is None or _vocab is None:
+        train()
+
+    text = clean_text(text)
+    ids  = tokenise([text], _vocab)
+
+    tensor = torch.tensor(ids, dtype=torch.long).to(DEVICE)
+
+    _model.eval()
+    with torch.no_grad():
+        logits = _model(tensor)
+        pred   = logits.argmax(dim=1).item()
+
+    return IDX2CLASS[pred]
+
+
+def batch_predict(texts):
+    """
+    Batch prediction (for comparison script)
+    """
+    global _model, _vocab
+
+    if _model is None or _vocab is None:
+        train()
+
+    texts = [clean_text(t) for t in texts]
+    ids   = tokenise(texts, _vocab)
+
+    tensor = torch.tensor(ids, dtype=torch.long).to(DEVICE)
+
+    _model.eval()
+    with torch.no_grad():
+        logits = _model(tensor)
+        preds  = logits.argmax(dim=1).cpu().numpy()
+
+    return [IDX2CLASS[p] for p in preds]

@@ -18,7 +18,7 @@ from sklearn.metrics import (
 )
 
 
-DATA_DIR = "."
+DATA_DIR = "data"
 SAVE_DIR = "."
 CLASSES  = ["business", "education", "entertainment", "sports", "technology"]
 
@@ -110,9 +110,9 @@ def train_and_evaluate(pipe, X_train, X_val, X_test, y_train, y_val, y_test):
     test_acc = accuracy_score(y_test, test_preds)
     test_f1  = f1_score(y_test, test_preds, average="macro")
 
-    print("\n" + "═" * 50)
+    print("\n" + "=" * 50)
     print("  Linear SVM — Results")
-    print("═" * 50)
+    print("=" * 50)
     print(f"  Val  Accuracy : {val_acc:.4f}   Val  Macro-F1 : {val_f1:.4f}")
     print(f"  Test Accuracy : {test_acc:.4f}   Test Macro-F1 : {test_f1:.4f}")
     print(f"\n{classification_report(y_test, test_preds)}")
@@ -179,9 +179,9 @@ def plot_top_features(pipe, save_dir=SAVE_DIR, n_top=15):
 
 
 def main():
-    print("═" * 55)
+    print("=" * 55)
     print("  Linear SVM — News Classifier")
-    print("═" * 55)
+    print("=" * 55)
 
     df = load_data()
     df = build_feature_column(df)
@@ -199,3 +199,53 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# ===============================
+# 🔹 GLOBAL MODEL (for reuse)
+# ===============================
+_model = None
+
+
+def train(X_train=None, y_train=None):
+    """
+    Train model for external use (compare_models.py)
+    """
+    global _model
+
+    if X_train is None or y_train is None:
+        # fallback → full pipeline training
+        df = load_data()
+        df = build_feature_column(df)
+        X_train, X_val, X_test, y_train, y_val, y_test = split_data(df)
+
+    pipe = build_pipeline(calibrated=False)
+    pipe.fit(X_train, y_train)
+
+    _model = pipe
+    return _model
+
+
+def predict(text):
+    """
+    Predict single text (for Streamlit)
+    """
+    global _model
+
+    if _model is None:
+        _model = train()
+
+    text = clean_text(text)
+    return _model.predict([text])[0]
+
+
+def batch_predict(texts):
+    """
+    Predict multiple texts (for evaluation script)
+    """
+    global _model
+
+    if _model is None:
+        _model = train()
+
+    texts = [clean_text(t) for t in texts]
+    return _model.predict(texts)

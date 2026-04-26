@@ -17,7 +17,7 @@ from sklearn.metrics import (
 )
 
 
-DATA_DIR = "."
+DATA_DIR = "data"
 SAVE_DIR = "."
 CLASSES  = ["business", "education", "entertainment", "sports", "technology"]
 
@@ -213,3 +213,52 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# ===============================
+# 🔹 GLOBAL MODEL
+# ===============================
+_model = None
+
+
+def train(X_train=None, y_train=None):
+    """
+    Train model for external scripts (compare_models.py)
+    """
+    global _model
+
+    if X_train is None or y_train is None:
+        df = load_data()
+        df = build_feature_column(df)
+        X_train, X_val, X_test, y_train, y_val, y_test = split_data(df)
+
+    pipe = build_pipeline()
+    pipe.fit(X_train, y_train)
+
+    _model = pipe
+    return _model
+
+
+def predict(text):
+    """
+    Single prediction (for Streamlit)
+    """
+    global _model
+
+    if _model is None:
+        _model = train()
+
+    text = clean_text(text)
+    return _model.predict([text])[0]
+
+
+def batch_predict(texts):
+    """
+    Batch prediction (for evaluation script)
+    """
+    global _model
+
+    if _model is None:
+        _model = train()
+
+    texts = [clean_text(t) for t in texts]
+    return _model.predict(texts)
