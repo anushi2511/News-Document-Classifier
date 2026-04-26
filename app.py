@@ -17,8 +17,6 @@ input_method = st.radio(
 )
 text = ""
 
-
-
 if input_method == "Upload File":
     from PyPDF2 import PdfReader
 
@@ -73,7 +71,7 @@ if st.button("Predict Category"):
     if text.strip() == "":
         st.warning("Please provide input text")
     else:
-        prediction = model.predict(text)  # Ensure each model has predict()
+        prediction = model.predict(text)
         st.success(f"Predicted Category: **{prediction}**")
 
 
@@ -124,4 +122,4 @@ if st.button("Compare All Models"):
             st.bar_chart(df.set_index("Model"))
 
         else:
-            st.warning("⚠️ Run compare_models.py to generate accuracy results")
+            st.warning("Run compare_models.py to generate accuracy results")
